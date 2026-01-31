@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GoStructVisor - UI to Struct</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body class="bg-slate-900 text-white min-h-screen">
+    <div class="container mx-auto px-4 py-10 max-w-4xl">
+      <header class="text-center mb-12">
+        <h1 class="text-4xl font-extrabold text-blue-400 mb-2">
+          GoStructVisor
+        </h1>
+        <p class="text-slate-400 text-lg">
+          Ubah Screenshot UI atau DDL SQL menjadi Go Struct secara instan.
+        </p>
+      </header>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div
+          class="bg-slate-800 p-6 rounded-xl shadow-xl border border-slate-700"
+        >
+          <h2 class="text-xl font-semibold mb-4 flex items-center">
+            <i data-lucide="upload" class="mr-2 text-blue-400"></i> Upload
+            Gambar
+          </h2>
+          <form id="uploadForm" class="space-y-4">
+            <div
+              class="border-2 border-dashed border-slate-600 rounded-lg p-8 text-center hover:border-blue-500 transition-colors cursor-pointer"
+              onclick="document.getElementById('fileInput').click()"
+            >
+              <input
+                type="file"
+                id="fileInput"
+                name="image"
+                class="hidden"
+                accept="image/*"
+              />
+              <div id="previewContainer" class="hidden mb-4">
+                <img
+                  id="imagePreview"
+                  class="mx-auto max-h-48 rounded shadow-md"
+                />
+              </div>
+              <div id="uploadPlaceholder">
+                <i
+                  data-lucide="image"
+                  class="mx-auto w-12 h-12 text-slate-500 mb-2"
+                ></i>
+                <p class="text-slate-400">
+                  Klik untuk pilih gambar atau drag & drop
+                </p>
+              </div>
+            </div>
+            <button
+              type="submit"
+              id="generateBtn"
+              class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-all flex justify-center items-center disabled:bg-slate-600"
+            >
+              <span id="btnText">Generate Go Struct</span>
+            </button>
+          </form>
+        </div>
+
+        <div
+          class="bg-slate-800 p-6 rounded-xl shadow-xl border border-slate-700 flex flex-col"
+        >
+          <h2
+            class="text-xl font-semibold mb-4 flex items-center justify-between"
+          >
+            <span class="flex items-center">
+              <i data-lucide="code" class="mr-2 text-green-400"></i> Hasil Kode
+            </span>
+            <button
+              onclick="copyCode()"
+              class="text-sm bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded transition-colors"
+            >
+              Copy
+            </button>
+          </h2>
+          <pre
+            id="resultArea"
+            class="bg-slate-950 p-4 rounded-lg overflow-x-auto text-sm text-green-400 font-mono flex-grow min-h-[200px]"
+          >
+// Hasil akan muncul di sini...
+                </pre
+          >
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Inisialisasi Lucide Icons
+      lucide.createIcons();
+
+      const fileInput = document.getElementById("fileInput");
+      const previewContainer = document.getElementById("previewContainer");
+      const imagePreview = document.getElementById("imagePreview");
+      const uploadPlaceholder = document.getElementById("uploadPlaceholder");
+      const uploadForm = document.getElementById("uploadForm");
+      const resultArea = document.getElementById("resultArea");
+      const generateBtn = document.getElementById("generateBtn");
+      const btnText = document.getElementById("btnText");
+      const dropZone = uploadPlaceholder.parentElement;
+
+      // Preview Gambar
+      fileInput.addEventListener("change", function () {
+        const file = this.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            imagePreview.src = e.target.result;
+            previewContainer.classList.remove("hidden");
+            uploadPlaceholder.classList.add("hidden");
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // 1. Mencegah browser membuka file secara default
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+        dropZone.addEventListener(
+          eventName,
+          (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          },
+          false
+        );
+      });
+
+      // 2. Efek visual saat file ditarik di atas area upload
+      ["dragenter", "dragover"].forEach((eventName) => {
+        dropZone.addEventListener(
+          eventName,
+          () => {
+            dropZone.classList.add("border-blue-500", "bg-slate-700");
+          },
+          false
+        );
+      });
+
+      ["dragleave", "drop"].forEach((eventName) => {
+        dropZone.addEventListener(
+          eventName,
+          () => {
+            dropZone.classList.remove("border-blue-500", "bg-slate-700");
+          },
+          false
+        );
+      });
+
+      // 3. Menangani file yang dijatuhkan (Dropped)
+      dropZone.addEventListener("drop", (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        if (files.length > 0) {
+          fileInput.files = files; // Masukkan file ke input tersembunyi
+
+          // Trigger preview gambar (gunakan logic yang sama dengan change event)
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            imagePreview.src = e.target.result;
+            previewContainer.classList.remove("hidden");
+            uploadPlaceholder.classList.add("hidden");
+          };
+          reader.readAsDataURL(files[0]);
+        }
+      });
+
+      // Submit Logic
+      uploadForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const formData = new FormData(uploadForm);
+
+        if (!fileInput.files[0]) return alert("Pilih gambar dulu bos!");
+
+        // Loading state
+        generateBtn.disabled = true;
+        btnText.innerText = "Sedang Berpikir...";
+        resultArea.innerText = "// Gemini sedang menganalisis gambar...";
+
+        try {
+          const response = await fetch("/generate", {
+            method: "POST",
+            body: formData,
+          });
+          const result = await response.json();
+
+          if (result.success) {
+            // Bersihkan markdown code blocks (```go ... ```) jika ada
+            const cleanCode = result.data.replace(/```go|```/g, "");
+            resultArea.innerText = cleanCode.trim();
+          } else {
+            resultArea.innerText = "Error: " + result.error;
+          }
+        } catch (error) {
+          resultArea.innerText = "Terjadi kesalahan koneksi.";
+        } finally {
+          generateBtn.disabled = false;
+          btnText.innerText = "Generate Go Struct";
+        }
+      });
+
+      function copyCode() {
+        const code = resultArea.innerText;
+        navigator.clipboard.writeText(code);
+        alert("Kode disalin ke clipboard!");
+      }
+    </script>
+  </body>
+</html>
