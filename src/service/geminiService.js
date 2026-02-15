@@ -1,12 +1,8 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fs = require("fs");
 
-// Inisialisasi API dengan API Key dari .env
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-/**
- * Mengubah path file lokal menjadi objek yang dipahami Gemini
- */
 function fileToGenerativePart(path, mimeType) {
     return {
         inlineData: {
@@ -16,14 +12,16 @@ function fileToGenerativePart(path, mimeType) {
     };
 }
 
-async function generateGoStruct(imagePath, mimeType) {
-    // Gunakan model flash karena cepat dan sangat baik untuk vision task sederhana
+async function generateGoStruct(inputData, type = 'image') {
+    // Gunakan model flash-latest agar lebih stabil
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // System Prompt: Kunci agar outputnya presisi
     const prompt = `
         Anda adalah pakar backend developer Golang. 
-        Tugas Anda adalah menganalisis gambar yang diberikan (bisa berupa UI formulir, skema database, atau DDL SQL).
+        Tugas Anda adalah menganalisis INPUT yang diberikan. Input bisa berupa:
+        1. Gambar (Screenshot UI atau DDL SQL).
+        2. Teks (Raw SQL, JSON, atau skema lain).
         
         Ekstrak semua field yang ada dan buatkan Struct Golang yang idiomatik:
         1. Gunakan PascalCase untuk nama field.
@@ -33,9 +31,18 @@ async function generateGoStruct(imagePath, mimeType) {
         Hanya berikan kode saja, tanpa penjelasan basa-basi di awal atau di akhir.
     `;
 
-    const imagePart = fileToGenerativePart(imagePath, mimeType);
+    let parts = [prompt];
 
-    const result = await model.generateContent([prompt, imagePart]);
+    if (type === 'image') {
+        // Jika input adalah path file gambar
+        const imagePart = fileToGenerativePart(inputData.path, inputData.mimeType);
+        parts.push(imagePart);
+    } else {
+        // Jika input adalah text raw
+        parts.push(`INPUT DATA:\n${inputData}`);
+    }
+
+    const result = await model.generateContent(parts);
     const response = await result.response;
     return response.text();
 }

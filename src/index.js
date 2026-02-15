@@ -22,24 +22,51 @@ app.use(express.static('public')); // Sajikan file statis (HTML/CSS)
 app.use(express.json());
 
 // Endpoint untuk Upload dan Generate
-app.post('/generate', upload.single('image'), async (req, res) => {
+app.post('/generate', (req, res, next) => {
+    // Wrapper agar Multer tidak langsung throw error ke user jika file kosong
+    upload.single('image')(req, res, (err) => {
+        if (err) {
+            // Error multer spesifik (misal file terlalu besar)
+            return res.status(400).json({ error: err.message });
+        }
+        next(); // Lanjut ke controller utama kita
+    });
+}, async (req, res) => {
     try {
-        if (!req.file) return res.status(400).send('No file uploaded.');
+        let goCode = "";
 
-        // Panggil service
-        const goCode = await generateGoStruct(req.file.path, req.file.mimetype);
+        // Cek Mode: Apakah ada file?
+        if (req.file) {
+            console.log('Processing Image Mode...');
+            goCode = await generateGoStruct({
+                path: req.file.path,
+                mimeType: req.file.mimetype
+            }, 'image');
 
-        // Hapus file setelah diproses agar tidak memenuhi storage
-        const fs = require('fs');
-        fs.unlinkSync(req.file.path);
+            // Bersihkan file
+            const fs = require('fs');
+            if (fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
+        }
+        // Cek Mode: Apakah ada text input?
+        else if (req.body.textInput) {
+            console.log('Processing Text Mode...');
+            goCode = await generateGoStruct(req.body.textInput, 'text');
+        }
+        else {
+            // Jika keduanya kosong
+            return res.status(400).json({ error: 'Harap upload gambar atau masukkan teks.' });
+        }
 
         res.json({
             success: true,
             data: goCode
         });
+
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Gagal memproses gambar" });
+        console.error("Server Error:", error);
+        res.status(500).json({ error: "Gagal memproses permintaan: " + error.message });
     }
 });
 
