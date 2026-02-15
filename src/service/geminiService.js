@@ -22,17 +22,16 @@ async function generateGoStruct(imagePath, mimeType) {
 
     // System Prompt: Kunci agar outputnya presisi
     const prompt = `
-    Anda adalah pakar backend developer Golang. 
-    Tugas Anda adalah menganalisis gambar yang diberikan (bisa berupa UI formulir, skema database, atau DDL SQL).
-    
-    Ekstrak semua field yang ada dan buatkan Struct Golang yang idiomatik:
-    1. Gunakan PascalCase untuk nama field.
-    2. Tambahkan tag json dalam snake_case.
-    3. Jika gambar terlihat seperti skema database, tambahkan tag db.
-    4. Gunakan tipe data Go yang tepat (misal: time.Time untuk tanggal, google/uuid untuk ID).
-    
-    Hanya berikan kode saja, tanpa penjelasan basa-basi di awal atau di akhir.
-  `;
+        Anda adalah pakar backend developer Golang. 
+        Tugas Anda adalah menganalisis gambar yang diberikan (bisa berupa UI formulir, skema database, atau DDL SQL).
+        
+        Ekstrak semua field yang ada dan buatkan Struct Golang yang idiomatik:
+        1. Gunakan PascalCase untuk nama field.
+        2. Tambahkan tag json dalam snake_case.
+        3. Jika gambar terlihat seperti skema database, tambahkan tag db.
+        
+        Hanya berikan kode saja, tanpa penjelasan basa-basi di awal atau di akhir.
+    `;
 
     const imagePart = fileToGenerativePart(imagePath, mimeType);
 
